@@ -45,7 +45,9 @@ export class MultipartReader {
     return new Promise((res, rej) => {
       let temp = Buffer.of();
       let headerFetched: boolean;
+      let working = false;
       stream.on('data', async (chunk) => {
+        working = true;
         temp = Buffer.concat([temp, chunk]);
         let newLineBreak = -1;
         do {
@@ -81,11 +83,15 @@ export class MultipartReader {
             }
           }
         } while (newLineBreak >= 0);
+        working = false;
       });
       stream.on('error', (e) => {
         rej(e);
       });
       stream.on('end', async () => {
+        while (working) {
+          await new Promise((res) => setTimeout(res));
+        }
         if (headerBuffer.length) {
           return rej('Unexpected end of stream');
         }
